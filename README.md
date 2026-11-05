@@ -20,6 +20,8 @@ General AI chatbots don't know what your professor actually tests. This project 
 - [Ishika Jain](https://www.linkedin.com/in/ishika-jain-973686215/) - Designer
 - [Aanya Chauhan](https://www.linkedin.com/in/aanya-v-chauhan/) - Developer
 
+- [Namit Jain](https://github.com/NamitJain421) - Developer
+
 ## Contributing
 
 Visit [contributing.md](docs/contributing.md) on info for how to contribute to this repo.
