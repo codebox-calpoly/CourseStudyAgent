@@ -10,7 +10,7 @@ Short paragraph description
 
 ### Team
 
-- [First Last](https://www.linkedin.com/) - Project Manager
+- [Isaiah Rivera](https://www.linkedin.com/in/rivera-isaiah/) - Project Manager
 - [First Last](https://www.linkedin.com/) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Designer
