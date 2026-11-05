@@ -15,6 +15,7 @@ Short paragraph description
 - [First Last](https://www.linkedin.com/) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Designer
 - [First Last](https://www.linkedin.com/) - Developer
+- [Kayla McCulloch](www.linkedin.com/in/kmccul) - Developer
 
 ## Contributing
 
