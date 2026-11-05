@@ -13,7 +13,7 @@ General AI chatbots don't know what your professor actually tests. This project 
 - [First Last](https://www.linkedin.com/) - Project Manager
 - [Snehil Kakani](https://www.linkedin.com/in/snehilkakani) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Tech Lead
-- [First Last](https://www.linkedin.com/) - Designer
+- [Ishika Jain](https://www.linkedin.com/in/ishika-jain-973686215/) - Designer
 - [Aanya Chauhan](https://www.linkedin.com/in/aanya-v-chauhan/) - Developer
 
 ## Contributing
