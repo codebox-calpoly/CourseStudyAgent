@@ -13,7 +13,7 @@ Short paragraph description
 - [First Last](https://www.linkedin.com/) - Project Manager
 - [First Last](https://www.linkedin.com/) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Tech Lead
-- [First Last](https://www.linkedin.com/) - Designer
+- [Ishika Jain](https://www.linkedin.com/in/ishika-jain-973686215/) - Designer
 - [First Last](https://www.linkedin.com/) - Developer
 
 ## Contributing
