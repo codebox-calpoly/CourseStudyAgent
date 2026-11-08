@@ -3,6 +3,12 @@ export function chunkText(
   size: number,
   overlap: number,
 ): string[] {
+  if (!Number.isInteger(size) || size <= 0) {
+    throw new Error("Size must be greater than zero");
+  }
+  if (!Number.isInteger(overlap) || overlap < 0) {
+    throw new Error("Overlap cannot be negative");
+  }
   if (overlap >= size) {
     throw new Error("Overlap must be smaller than size");
   }
