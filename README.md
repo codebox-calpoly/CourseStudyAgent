@@ -9,8 +9,7 @@ A shared AI study agent for Cal Poly classes, built by CodeBox.
 General AI chatbots don't know what your professor actually tests. This project aims to give each class its own agent. It learns from what students share: notes, lab rubrics, released exams and tips from lecture. Students get answers that come with sources, practice exams written like their professor's, and better predictions after every exam. Each student's own chats stay private.
 
 ### Team
-
-- [First Last](https://www.linkedin.com/) - Project Manager
+- [Isaiah Rivera](https://www.linkedin.com/in/rivera-isaiah/) - Project Manager
 - [Snehil Kakani](https://www.linkedin.com/in/snehilkakani) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Tech Lead
 - [First Last](https://www.linkedin.com/) - Tech Lead
@@ -19,6 +18,9 @@ General AI chatbots don't know what your professor actually tests. This project 
 - [Kayla McCulloch](www.linkedin.com/in/kmccul) - Developer
 - [Ishika Jain](https://www.linkedin.com/in/ishika-jain-973686215/) - Designer
 - [Aanya Chauhan](https://www.linkedin.com/in/aanya-v-chauhan/) - Developer
+- [Harold Huynh](https://www.linkedin.com/in/haroldhuynh) - Developer
+
+- [Namit Jain](https://github.com/NamitJain421) - Developer
 
 ## Contributing
 
