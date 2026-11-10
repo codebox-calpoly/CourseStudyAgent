@@ -89,4 +89,65 @@ describe("chunkText", () => {
       );
     },
   );
+
+  it("prefers sentence boundaries", () => {
+    const text = "First sentence. Second sentence. Third sentence.";
+    const chunks = chunkText(text, 40, 5);
+
+    expect(chunks[0]).toBe("First sentence. Second sentence.");
+  });
+
+  it("still respects the maximum size", () => {
+    const text = "This sentence has no convenient early stopping point.";
+    const chunks = chunkText(text, 10, 2);
+
+    expect(chunks.every((chunk) => chunk.length <= 10)).toBe(true);
+  });
+
+  it.each([
+    ["Unix", "\n\n"],
+    ["Windows", "\r\n\r\n"],
+    ["spaces in blank line", "\n   \n"],
+  ])("recognizes %s paragraph boundaries", (_name, separator) => {
+    const first = "This is a sufficiently long first paragraph.";
+    const text =
+      `${first}${separator}` + "Second paragraph continues for quite a while.";
+
+    const chunks = chunkText(text, 55, 5);
+
+    expect(chunks[0]).toBe(first + separator);
+  });
+
+  it("avoids splitting words when possible", () => {
+    const chunks = chunkText("alpha beta gamma delta", 12, 2);
+
+    expect(chunks[0]).toBe("alpha beta ");
+  });
+
+  it("splits at the hard limit when no boundary exists", () => {
+    expect(chunkText("abcdefghijklmnop", 5, 1)).toEqual([
+      "abcde",
+      "efghi",
+      "ijklm",
+      "mnop",
+    ]);
+  });
+
+  it("reconstructs text after splitting at natural boundaries", () => {
+    const text =
+      "This is the first paragraph.\n\n" +
+      "This is the second paragraph. It has another sentence.";
+
+    const overlap = 5;
+    const chunks = chunkText(text, 40, overlap);
+
+    const reconstructed =
+      (chunks[0] ?? "") +
+      chunks
+        .slice(1)
+        .map((chunk) => chunk.slice(overlap))
+        .join("");
+
+    expect(reconstructed).toBe(text);
+  });
 });
