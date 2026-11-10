@@ -2,50 +2,20 @@ import { describe, expect, it } from "vitest";
 import { validateUpload } from "./validateUpload";
 
 describe("Unit tests for validateUpload", () => {
-  it("allows PDF files", () => {
+  it.each([
+    ["PDF", "document.pdf", "application/pdf"],
+    [
+      "PPTX",
+      "slides.pptx",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ],
+    ["PNG", "image.png", "image/png"],
+    ["JPEG", "image.jpg", "image/jpeg"],
+    ["plain text", "notes.txt", "text/plain"],
+  ])("allows %s files", (_label, name, type) => {
     const result = validateUpload({
-      name: "document.pdf",
-      type: "application/pdf",
-      size: 1,
-    });
-
-    expect(result).toEqual({ ok: true });
-  });
-
-  it("allows PPTX files", () => {
-    const result = validateUpload({
-      name: "slides.pptx",
-      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      size: 1,
-    });
-
-    expect(result).toEqual({ ok: true });
-  });
-
-  it("allows PNG files", () => {
-    const result = validateUpload({
-      name: "image.png",
-      type: "image/png",
-      size: 1,
-    });
-
-    expect(result).toEqual({ ok: true });
-  });
-
-  it("allows JPEG files", () => {
-    const result = validateUpload({
-      name: "image.jpg",
-      type: "image/jpeg",
-      size: 1,
-    });
-
-    expect(result).toEqual({ ok: true });
-  });
-
-  it("allows plain text files", () => {
-    const result = validateUpload({
-      name: "notes.txt",
-      type: "text/plain",
+      name,
+      type,
       size: 1,
     });
 
