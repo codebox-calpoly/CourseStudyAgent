@@ -25,3 +25,17 @@ General AI chatbots don't know what your professor actually tests. This project 
 ## Contributing
 
 Visit [contributing.md](docs/contributing.md) on info for how to contribute to this repo.
+
+## Getting Started
+
+Requires Node 22+ and [pnpm](https://pnpm.io/installation).
+
+```bash
+pnpm install
+cp .env.example .env.local   # ask a tech lead for values
+pnpm dev                     # http://localhost:3000
+```
+
+Before opening a PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm format`. CI runs lint, format check, typecheck and tests.
+
+Layout: `src/app` (routes), `src/components` (UI), `src/lib` (shared helpers), `src/server` (backend-only code: db, parsing, retrieval).
