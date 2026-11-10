@@ -1,7 +1,8 @@
 # Environment configuration
 
-Install dependencies with `pnpm install` (Node.js 24 and pnpm 11).
-Run `pnpm test`, `pnpm lint`, `pnpm typecheck`, and `pnpm format` to verify changes.
+Install dependencies with `pnpm install` (Node.js 22 and pnpm 10.33.0, matching CI).
+Run `pnpm test`, `pnpm lint`, `pnpm typecheck`, and `pnpm format:check` to verify changes.
+Use `pnpm format` to apply formatting.
 
 `src/lib/env.ts` exports `getEnv(source = process.env)`. Call it when runtime
 configuration is needed. It returns `DATABASE_URL`, `AI_GATEWAY_API_KEY`, and

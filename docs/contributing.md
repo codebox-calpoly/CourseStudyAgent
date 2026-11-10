@@ -26,3 +26,10 @@ After pushing, go to the project repo on Github
 2. Make sure your PR is linked to the corresponding issue
 3. Request a reviewer to check out your code
 4. Once approved, your code is ready to be merged!
+
+## Conventions
+
+- Branch names: `<name>/<short-description>`, e.g. `snehil/add-schema`
+- PR titles: conventional commit style, e.g. `feat: add join codes`
+- Before pushing: `pnpm lint && pnpm typecheck && pnpm test && pnpm format`
+- Never commit `.env.local`; add new variables to `.env.example`
