@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getEnv } from "./env.js";
+import { getEnv } from "./env";
 
 const validEnv = {
   DATABASE_URL: "postgresql://localhost/course_study_test",
@@ -52,7 +52,7 @@ describe("getEnv", () => {
   it("can be imported without environment variables and validates only on call", async () => {
     for (const key of keys) vi.stubEnv(key, undefined);
     vi.resetModules();
-    const { getEnv: importedGetEnv } = await import("./env.js");
+    const { getEnv: importedGetEnv } = await import("./env");
     expect(() => importedGetEnv()).toThrow(
       "Missing environment variables: DATABASE_URL, AI_GATEWAY_API_KEY, AUTH_SECRET",
     );
