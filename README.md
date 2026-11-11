@@ -40,3 +40,12 @@ pnpm dev                     # http://localhost:3000
 Before opening a PR: `pnpm lint && pnpm typecheck && pnpm test && pnpm format`. CI runs lint, format check, typecheck and tests.
 
 Layout: `src/app` (routes), `src/components` (UI), `src/lib` (shared helpers), `src/server` (backend-only code: db, parsing, retrieval).
+
+### Environment validation
+
+Call `getEnv()` from `src/lib/env.ts` when server-side configuration is needed.
+It validates `DATABASE_URL`, `AI_GATEWAY_API_KEY`, and `AUTH_SECRET`, reporting all
+missing or empty values together without including secrets in errors. Validation
+runs only when called, not at import time. Next.js loads `.env.local`; the helper
+itself does not read files. Unit tests pass sample values directly and need no
+real credentials.
