@@ -1,12 +1,4 @@
-/** Check a single email address against the exact Cal Poly domain. */
+/** Require a nonempty local part without whitespace or @, and the exact domain. */
 export function isCalPolyEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase();
-  const separator = normalized.lastIndexOf("@");
-
-  return (
-    separator > 0 &&
-    normalized.indexOf("@") === separator &&
-    !/\s/.test(normalized) &&
-    normalized.slice(separator + 1) === "calpoly.edu"
-  );
+  return /^[^\s@]+@calpoly\.edu$/i.test(email.trim());
 }

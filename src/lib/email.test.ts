@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCalPolyEmail } from "./email.js";
+import { isCalPolyEmail } from "./email";
 
 describe("isCalPolyEmail", () => {
   it.each([
