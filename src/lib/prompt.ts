@@ -15,7 +15,7 @@ export function buildPrompt(
             `[${index + 1}] ${chunk.fileName}: ${chunk.content}`,
         )
         .join("\n\n")
-    : "No sources were provided. Say you don't know the answer from the provided sources.";
+    : "No sources were provided.";
 
   return [
     "Answer the student's question using only the sources below. Do not use outside knowledge.",
