@@ -48,11 +48,21 @@ function findNaturalEnd(
     return start + sentenceEnd;
   }
 
-  // Otherwise, avoid splitting a word.
-  const whitespaceIndex = window.lastIndexOf(" ");
+  // Otherwise, avoid splitting inside a word when spaces, newlines, or tabs
+  // provide a lower-priority boundary.
+  const whitespacePattern = /\s+/g;
+  let whitespaceEnd = -1;
 
-  if (whitespaceIndex + 1 >= minimumLength) {
-    return start + whitespaceIndex + 1;
+  for (const match of window.matchAll(whitespacePattern)) {
+    const candidate = match.index + match[0].length;
+
+    if (candidate >= minimumLength) {
+      whitespaceEnd = candidate;
+    }
+  }
+
+  if (whitespaceEnd !== -1) {
+    return start + whitespaceEnd;
   }
 
   // A long sentence or word must be split at the hard limit.

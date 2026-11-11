@@ -124,6 +124,18 @@ describe("chunkText", () => {
     expect(chunks[0]).toBe("alpha beta ");
   });
 
+  it("uses a single newline as a low-priority boundary", () => {
+    const chunks = chunkText("alpha\nbetagamma", 8, 1);
+
+    expect(chunks[0]).toBe("alpha\n");
+  });
+
+  it("uses a tab as a low-priority boundary", () => {
+    const chunks = chunkText("alpha\tbetagamma", 8, 1);
+
+    expect(chunks[0]).toBe("alpha\t");
+  });
+
   it("splits at the hard limit when no boundary exists", () => {
     expect(chunkText("abcdefghijklmnop", 5, 1)).toEqual([
       "abcde",
