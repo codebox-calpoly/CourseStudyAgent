@@ -14,24 +14,9 @@ export function generateJoinCode(): string {
 }
 
 export function normalizeJoinCode(input: string): string {
-  const code = input.trim().toUpperCase();
-
-  if (!/^[A-Z0-9]{6}$/.test(code)) {
-    throw new RangeError(
-      "Join code must contain exactly six letters or digits.",
-    );
-  }
-
-  return code;
+  return input.trim().toUpperCase();
 }
 
 export function isExpired(expiresAt: Date, now: Date = new Date()): boolean {
-  const expirationTime = expiresAt.getTime();
-  const currentTime = now.getTime();
-
-  if (!Number.isFinite(expirationTime) || !Number.isFinite(currentTime)) {
-    throw new RangeError("Expiration and current time must be valid dates.");
-  }
-
-  return currentTime >= expirationTime;
+  return now.getTime() >= expiresAt.getTime();
 }
