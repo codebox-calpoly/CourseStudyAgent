@@ -1,4 +1,6 @@
 import {
+  foreignKey,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -11,6 +13,12 @@ import { relations } from "drizzle-orm";
 const id = () => uuid("id").defaultRandom().primaryKey();
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
+
+export const membershipRole = pgEnum("membership_role", [
+  "student",
+  "professor",
+]);
+export const voteValue = pgEnum("vote_value", ["confirm", "dispute"]);
 
 export const users = pgTable("users", {
   id: id(),
@@ -38,7 +46,7 @@ export const memberships = pgTable(
     classId: uuid("class_id")
       .notNull()
       .references(() => classes.id, { onDelete: "cascade" }),
-    role: text("role", { enum: ["student", "professor"] }).notNull(),
+    role: membershipRole("role").notNull(),
   },
   (table) => [unique().on(table.userId, table.classId)],
 );
@@ -53,31 +61,42 @@ export const joinCodes = pgTable("join_codes", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
-export const files = pgTable("files", {
-  id: id(),
-  createdAt: createdAt(),
-  classId: uuid("class_id")
-    .notNull()
-    .references(() => classes.id, { onDelete: "cascade" }),
-  uploadedBy: uuid("uploaded_by")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  storagePath: text("storage_path").notNull(),
-});
+export const files = pgTable(
+  "files",
+  {
+    id: id(),
+    createdAt: createdAt(),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    uploadedBy: uuid("uploaded_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    storagePath: text("storage_path").notNull(),
+  },
+  (table) => [unique().on(table.id, table.classId)],
+);
 
-export const chunks = pgTable("chunks", {
-  id: id(),
-  createdAt: createdAt(),
-  fileId: uuid("file_id")
-    .notNull()
-    .references(() => files.id, { onDelete: "cascade" }),
-  classId: uuid("class_id")
-    .notNull()
-    .references(() => classes.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  embedding: vector("embedding", { dimensions: 1536 }).notNull(),
-});
+export const chunks = pgTable(
+  "chunks",
+  {
+    id: id(),
+    createdAt: createdAt(),
+    fileId: uuid("file_id").notNull(),
+    classId: uuid("class_id")
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.fileId, table.classId],
+      foreignColumns: [files.id, files.classId],
+    }).onDelete("cascade"),
+  ],
+);
 
 export const signals = pgTable("signals", {
   id: id(),
@@ -102,7 +121,7 @@ export const votes = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    value: text("value", { enum: ["confirm", "dispute"] }).notNull(),
+    value: voteValue("value").notNull(),
   },
   (table) => [unique().on(table.signalId, table.userId)],
 );

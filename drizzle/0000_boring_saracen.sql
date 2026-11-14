@@ -1,3 +1,6 @@
+CREATE EXTENSION IF NOT EXISTS vector;--> statement-breakpoint
+CREATE TYPE "public"."membership_role" AS ENUM('student', 'professor');--> statement-breakpoint
+CREATE TYPE "public"."vote_value" AS ENUM('confirm', 'dispute');--> statement-breakpoint
 CREATE TABLE "chunks" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -31,7 +34,8 @@ CREATE TABLE "files" (
 	"class_id" uuid NOT NULL,
 	"uploaded_by" uuid NOT NULL,
 	"name" text NOT NULL,
-	"storage_path" text NOT NULL
+	"storage_path" text NOT NULL,
+	CONSTRAINT "files_id_class_id_unique" UNIQUE("id","class_id")
 );
 --> statement-breakpoint
 CREATE TABLE "join_codes" (
@@ -48,7 +52,7 @@ CREATE TABLE "memberships" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"class_id" uuid NOT NULL,
-	"role" text NOT NULL,
+	"role" "membership_role" NOT NULL,
 	CONSTRAINT "memberships_user_id_class_id_unique" UNIQUE("user_id","class_id")
 );
 --> statement-breakpoint
@@ -80,12 +84,12 @@ CREATE TABLE "votes" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"signal_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
-	"value" text NOT NULL,
+	"value" "vote_value" NOT NULL,
 	CONSTRAINT "votes_signal_id_user_id_unique" UNIQUE("signal_id","user_id")
 );
 --> statement-breakpoint
-ALTER TABLE "chunks" ADD CONSTRAINT "chunks_file_id_files_id_fk" FOREIGN KEY ("file_id") REFERENCES "public"."files"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "chunks" ADD CONSTRAINT "chunks_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "chunks" ADD CONSTRAINT "chunks_file_id_class_id_files_id_class_id_fk" FOREIGN KEY ("file_id","class_id") REFERENCES "public"."files"("id","class_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "exam_reports" ADD CONSTRAINT "exam_reports_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "exam_reports" ADD CONSTRAINT "exam_reports_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "files" ADD CONSTRAINT "files_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

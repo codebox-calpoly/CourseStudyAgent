@@ -1,5 +1,5 @@
 {
-  "id": "3fb8d10d-f2fd-478e-b113-f31cde3053b1",
+  "id": "f18bfbae-dbb5-45cd-86f8-5c8601aaa4b4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -49,21 +49,21 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "chunks_file_id_files_id_fk": {
-          "name": "chunks_file_id_files_id_fk",
-          "tableFrom": "chunks",
-          "tableTo": "files",
-          "columnsFrom": ["file_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "chunks_class_id_classes_id_fk": {
           "name": "chunks_class_id_classes_id_fk",
           "tableFrom": "chunks",
           "tableTo": "classes",
           "columnsFrom": ["class_id"],
           "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chunks_file_id_class_id_files_id_class_id_fk": {
+          "name": "chunks_file_id_class_id_files_id_class_id_fk",
+          "tableFrom": "chunks",
+          "tableTo": "files",
+          "columnsFrom": ["file_id", "class_id"],
+          "columnsTo": ["id", "class_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -260,7 +260,13 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "files_id_class_id_unique": {
+          "name": "files_id_class_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["id", "class_id"]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -358,7 +364,8 @@
         },
         "role": {
           "name": "role",
-          "type": "text",
+          "type": "membership_role",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         }
@@ -595,7 +602,8 @@
         },
         "value": {
           "name": "value",
-          "type": "text",
+          "type": "vote_value",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         }
@@ -634,7 +642,18 @@
       "isRLSEnabled": false
     }
   },
-  "enums": {},
+  "enums": {
+    "public.membership_role": {
+      "name": "membership_role",
+      "schema": "public",
+      "values": ["student", "professor"]
+    },
+    "public.vote_value": {
+      "name": "vote_value",
+      "schema": "public",
+      "values": ["confirm", "dispute"]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},
