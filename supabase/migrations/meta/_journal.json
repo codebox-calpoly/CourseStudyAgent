@@ -5,8 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1794700786797,
-      "tag": "20261114235946_motionless_guardian",
+      "when": 1794702379128,
+      "tag": "20261115002619_enable_pgvector",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794702388332,
+      "tag": "20261115002628_nasty_toro",
       "breakpoints": true
     }
   ]

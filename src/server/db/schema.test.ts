@@ -105,4 +105,26 @@ describe("database schema", () => {
       getTableConfig(users).columns.map((column) => column.name),
     ).not.toContain("email");
   });
+
+  it("enables pgvector before creating vector columns", () => {
+    const migrationsDirectory = join(process.cwd(), "supabase", "migrations");
+    const migrations = readdirSync(migrationsDirectory)
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+    const extensionIndex = migrations.findIndex((migration) =>
+      readFileSync(join(migrationsDirectory, migration), "utf8").includes(
+        "CREATE EXTENSION IF NOT EXISTS vector;",
+      ),
+    );
+    const vectorTableIndex = migrations.findIndex((migration) =>
+      readFileSync(join(migrationsDirectory, migration), "utf8").includes(
+        'embedding" vector(1536)',
+      ),
+    );
+
+    expect(extensionIndex).toBeGreaterThanOrEqual(0);
+    expect(vectorTableIndex).toBeGreaterThan(extensionIndex);
+  });
 });
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";

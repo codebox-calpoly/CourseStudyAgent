@@ -52,16 +52,18 @@ real credentials.
 
 ### Local database
 
-Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and
-the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started).
-Start Docker, then run:
+For a fresh clone, install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+and the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started),
+then start Docker. After `pnpm install`, run:
 
 ```bash
 pnpm db:start
 ```
 
-Copy the local `DATABASE_URL` from `.env.example` to `.env.local`. Use
-`pnpm db:generate` after schema changes, `pnpm db:reset` to recreate the local
-database and apply migrations, and `pnpm db:stop` when finished. The migration
-files in `supabase/migrations` are for local Supabase only; this repository does
-not link to a hosted Supabase project.
+`pnpm db:start` applies every committed migration in `supabase/migrations`, so
+a fresh local database gets all application tables and pgvector before the
+`chunks.embedding` column is created. Copy the local `DATABASE_URL` from
+`.env.example` to `.env.local`. Use `pnpm db:generate` after schema changes,
+`pnpm db:reset` to recreate the local database and reapply every migration, and
+`pnpm db:stop` when finished. The migration files are for local Supabase only;
+this repository does not link to a hosted Supabase project.
