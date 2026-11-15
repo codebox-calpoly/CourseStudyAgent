@@ -1,5 +1,5 @@
 {
-  "id": "2e636080-669b-4172-8755-28419bcc66c0",
+  "id": "7543179f-2f99-4ba0-87d0-0d514c2c6c5d",
   "prevId": "3aad4832-2af4-4bea-9bd7-0130c1f9fed9",
   "version": "7",
   "dialect": "postgresql",
@@ -242,7 +242,7 @@
           "type": "file_kind",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "taught_on": {
           "name": "taught_on",
@@ -527,14 +527,14 @@
           "name": "topic",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "stance": {
           "name": "stance",
           "type": "signal_stance",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "verified_by_professor": {
           "name": "verified_by_professor",
