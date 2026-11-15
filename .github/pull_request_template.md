@@ -1,5 +1,5 @@
 ## Developer: First Last
-Closes Issue #<id>
+Closes #<id>
 
 ## Summary
 Briefly explain the change and why
