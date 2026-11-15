@@ -15,6 +15,13 @@
       "when": 1794702388332,
       "tag": "20261115002628_nasty_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794705311124,
+      "tag": "20261115011511_peaceful_supernaut",
+      "breakpoints": true
     }
   ]
 }
