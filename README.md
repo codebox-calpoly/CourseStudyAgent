@@ -49,3 +49,19 @@ missing or empty values together without including secrets in errors. Validation
 runs only when called, not at import time. Next.js loads `.env.local`; the helper
 itself does not read files. Unit tests pass sample values directly and need no
 real credentials.
+
+### Local database
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and
+the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started).
+Start Docker, then run:
+
+```bash
+pnpm db:start
+```
+
+Copy the local `DATABASE_URL` from `.env.example` to `.env.local`. Use
+`pnpm db:generate` after schema changes, `pnpm db:reset` to recreate the local
+database and apply migrations, and `pnpm db:stop` when finished. The migration
+files in `supabase/migrations` are for local Supabase only; this repository does
+not link to a hosted Supabase project.

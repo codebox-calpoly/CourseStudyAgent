@@ -9,7 +9,10 @@ if (!databaseUrl) {
 export default defineConfig({
   dialect: "postgresql",
   schema: "./src/server/db/schema.ts",
-  out: "./drizzle",
+  out: "./supabase/migrations",
+  migrations: {
+    prefix: "supabase",
+  },
   dbCredentials: {
     url: databaseUrl,
   },

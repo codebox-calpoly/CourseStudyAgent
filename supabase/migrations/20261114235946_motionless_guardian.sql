@@ -1,4 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS vector;--> statement-breakpoint
 CREATE TYPE "public"."membership_role" AS ENUM('student', 'professor');--> statement-breakpoint
 CREATE TYPE "public"."vote_value" AS ENUM('confirm', 'dispute');--> statement-breakpoint
 CREATE TABLE "chunks" (
@@ -73,10 +72,8 @@ CREATE TABLE "signals" (
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"email" text NOT NULL,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	"id" uuid PRIMARY KEY NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "votes" (
@@ -101,5 +98,6 @@ ALTER TABLE "prerequisites" ADD CONSTRAINT "prerequisites_class_id_classes_id_fk
 ALTER TABLE "prerequisites" ADD CONSTRAINT "prerequisites_prerequisite_class_id_classes_id_fk" FOREIGN KEY ("prerequisite_class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "signals" ADD CONSTRAINT "signals_class_id_classes_id_fk" FOREIGN KEY ("class_id") REFERENCES "public"."classes"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "signals" ADD CONSTRAINT "signals_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "users" ADD CONSTRAINT "users_id_users_id_fk" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "votes" ADD CONSTRAINT "votes_signal_id_signals_id_fk" FOREIGN KEY ("signal_id") REFERENCES "public"."signals"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "votes" ADD CONSTRAINT "votes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
