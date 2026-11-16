@@ -30,3 +30,10 @@ describe("parseCitations", () => {
     expect(() => parseCitations("[1]", count)).toThrow("sourceCount");
   });
 });
+
+it("explicitly ignores unsupported grouped and range forms", () => {
+  expect(parseCitations("[1, 2] [1-3] [2]", 3)).toEqual({
+    citations: [2],
+    invalidCitations: [],
+  });
+});

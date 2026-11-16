@@ -1,11 +1,18 @@
 const maxSize = 25 * 1024 * 1024; // 25MB in bytes
-const allowedMimeTypes = new Set<string>([
+
+export const allowedMimeTypeValues = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "image/png",
   "image/jpeg",
   "text/plain",
-]);
+] as const;
+
+export type AllowedMimeType = (typeof allowedMimeTypeValues)[number];
+
+export const allowedMimeTypes: ReadonlySet<string> = new Set(
+  allowedMimeTypeValues,
+);
 
 export function validateUpload(file: {
   name: string;
