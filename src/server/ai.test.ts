@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MockEmbeddingModelV4, MockLanguageModelV4 } from "ai/test";
-import { answerQuestion, embedTexts } from "./ai";
-import { buildPrompt } from "../lib/prompt";
+import {
+  answerQuestion,
+  embedTexts,
+  getChatModel,
+  getRequestSignal,
+} from "./ai";
+import { buildPrompt } from "@/lib/prompt";
+
+vi.mock("server-only", () => ({}));
 
 function textModel(text: string) {
   return new MockLanguageModelV4({
@@ -24,7 +31,6 @@ function textModel(text: string) {
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  vi.resetModules();
 });
 
 describe("answerQuestion", () => {
@@ -59,11 +65,7 @@ describe("answerQuestion", () => {
   });
   it("imports without configuration but explains the missing live model on call", async () => {
     vi.stubEnv("CHAT_MODEL", " ");
-    vi.resetModules();
-    const aiModule = await import("./ai");
-    await expect(aiModule.answerQuestion("Question", [])).rejects.toThrow(
-      "CHAT_MODEL",
-    );
+    await expect(answerQuestion("Question", [])).rejects.toThrow("CHAT_MODEL");
   });
 });
 
@@ -100,5 +102,53 @@ describe("embedTexts", () => {
         }),
       ),
     ).rejects.toThrow("finite");
+  });
+});
+
+describe("runtime configuration and request bounds", () => {
+  it("reads the current model each time without resetting modules", () => {
+    vi.stubEnv("CHAT_MODEL", "  test/first  ");
+    expect(getChatModel()).toHaveProperty("modelId", "test/first");
+    vi.stubEnv("CHAT_MODEL", "test/second");
+    expect(getChatModel()).toHaveProperty("modelId", "test/second");
+    vi.stubEnv("CHAT_MODEL", undefined);
+    expect(() => getChatModel()).toThrow("CHAT_MODEL");
+  });
+  it("sets an answer budget and forwards caller cancellation", async () => {
+    const controller = new AbortController();
+    const model = textModel("Answer");
+    await answerQuestion("Question", [], model, {
+      abortSignal: controller.signal,
+    });
+    expect(model.doGenerateCalls[0].maxOutputTokens).toBe(2048);
+    const signal = model.doGenerateCalls[0].abortSignal;
+    expect(signal?.aborted).toBe(false);
+    controller.abort();
+    expect(signal?.aborted).toBe(true);
+  });
+  it("applies a 30-second timeout even without caller cancellation", () => {
+    const controller = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(controller.signal);
+    try {
+      const signal = getRequestSignal();
+      expect(timeout).toHaveBeenCalledWith(30_000);
+      controller.abort(new DOMException("Timed out", "TimeoutError"));
+      expect(signal.aborted).toBe(true);
+      expect(signal.reason.name).toBe("TimeoutError");
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+  it("forwards cancellation to embedding calls", async () => {
+    const controller = new AbortController();
+    const model = new MockEmbeddingModelV4({
+      doEmbed: { embeddings: [Array(1536).fill(0)], warnings: [] },
+    });
+    await embedTexts(["text"], model, { abortSignal: controller.signal });
+    const signal = model.doEmbedCalls[0].abortSignal;
+    controller.abort();
+    expect(signal?.aborted).toBe(true);
   });
 });
