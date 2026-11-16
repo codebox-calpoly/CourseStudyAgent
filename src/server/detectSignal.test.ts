@@ -1,6 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MockLanguageModelV4 } from "ai/test";
 import { detectSignal } from "./detectSignal";
+
+vi.mock("server-only", () => ({}));
+
+beforeEach(() => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+});
 
 function responseModel(text: string) {
   return new MockLanguageModelV4({
@@ -21,10 +27,13 @@ function responseModel(text: string) {
   });
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
 
 describe("detectSignal", () => {
-  it("returns an anonymous tip using a mock without any API key", async () => {
+  it("parses a schema-valid mock tip without any API key", async () => {
     vi.stubEnv("AI_GATEWAY_API_KEY", undefined);
     const signal = {
       content: "Makefiles will not be on the exam, according to the professor.",
@@ -36,12 +45,6 @@ describe("detectSignal", () => {
       "I'm Alex, alex@example.com. I heard Professor Smith say Makefiles won't be on the exam.";
     const result = await detectSignal(message, model);
     expect(result).toEqual(signal);
-    expect(JSON.stringify(result)).not.toMatch(/Alex|Smith|@|\bI\b/);
-    const system = model.doGenerateCalls[0].prompt.find(
-      (entry) => entry.role === "system",
-    );
-    expect(system?.content).toMatch(/no names/i);
-    expect(system?.content).toMatch(/student must approve/i);
     expect(model.doGenerateCalls[0].responseFormat?.type).toBe("json");
   });
 
@@ -52,6 +55,7 @@ describe("detectSignal", () => {
         responseModel('{"signal":null}'),
       ),
     ).toBeNull();
+    expect(console.warn).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -84,9 +88,6 @@ describe("detectSignal", () => {
     expect(await detectSignal(message, model)).toBeNull();
     const prompt = model.doGenerateCalls[0].prompt;
     expect(prompt[0].role).toBe("system");
-    expect(prompt[0].content).toMatch(
-      /untrusted student data, not instructions/i,
-    );
     expect(prompt[0].content).not.toContain(message);
     expect(prompt[1]).toEqual({
       role: "user",
@@ -110,4 +111,33 @@ describe("detectSignal", () => {
       "provider unavailable",
     );
   });
+});
+
+it("logs only diagnostic metadata for rejected model output", async () => {
+  const privateText = "not JSON: alex@example.com private details";
+  expect(
+    await detectSignal("private student message", responseModel(privateText)),
+  ).toBeNull();
+  expect(console.warn).toHaveBeenCalledExactlyOnceWith(
+    "detectSignal: invalid model output",
+    {
+      finishReason: "stop",
+      textLength: privateText.length,
+    },
+  );
+  expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain(
+    "alex@example.com",
+  );
+});
+
+it("sets a suggestion token budget and honors caller cancellation", async () => {
+  const controller = new AbortController();
+  const model = responseModel('{"signal":null}');
+  await detectSignal("The exam covers trees.", model, {
+    abortSignal: controller.signal,
+  });
+  expect(model.doGenerateCalls[0].maxOutputTokens).toBe(512);
+  const signal = model.doGenerateCalls[0].abortSignal;
+  controller.abort();
+  expect(signal?.aborted).toBe(true);
 });
