@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getEnv } from "./env";
+import { getEnv, getChatModelId } from "./env";
 
 const validEnv = {
   DATABASE_URL: "postgresql://localhost/course_study_test",
@@ -56,5 +56,22 @@ describe("getEnv", () => {
     expect(() => importedGetEnv()).toThrow(
       "Missing environment variables: DATABASE_URL, AI_GATEWAY_API_KEY, AUTH_SECRET",
     );
+  });
+});
+
+describe("chat model validation", () => {
+  it("trims the optional model in the shared schema", () => {
+    expect(getEnv({ ...validEnv, CHAT_MODEL: " test/model " }).CHAT_MODEL).toBe(
+      "test/model",
+    );
+  });
+  it("rejects a supplied blank model while allowing an omitted model", () => {
+    expect(() => getEnv({ ...validEnv, CHAT_MODEL: " " })).toThrow(
+      "CHAT_MODEL",
+    );
+    expect(getEnv(validEnv)).toEqual(validEnv);
+  });
+  it("validates chat settings without requiring database or auth configuration", () => {
+    expect(getChatModelId({ CHAT_MODEL: " test/model " })).toBe("test/model");
   });
 });
