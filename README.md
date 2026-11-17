@@ -49,3 +49,20 @@ missing or empty values together without including secrets in errors. Validation
 runs only when called, not at import time. Next.js loads `.env.local`; the helper
 itself does not read files. Unit tests pass sample values directly and need no
 real credentials.
+
+### AI helpers
+
+`src/server/ai.ts` uses AI SDK v7 through AI Gateway. For live calls, set
+`AI_GATEWAY_API_KEY` and the tech-lead-selected Gateway model ID in `CHAT_MODEL`.
+There is no default chat model until that choice is made. Missing `CHAT_MODEL`
+fails only when a default chat call is requested, not when importing helpers.
+Model configuration is read and Zod-validated on each default call.
+Both helpers accept an optional final `{ abortSignal }` argument and enforce a
+30-second request timeout; answers are capped at 2048 output tokens.
+`embedTexts` uses `openai/text-embedding-3-small` and checks for 1536 finite values
+per vector. `answerQuestion` uses the prompt builder and returns source mappings
+alongside any invalid citation numbers; citations are references, not proof that
+an answer is supported. Tests inject SDK mock models and need no API key.
+
+Citations use individual `[n]` references. Grouped `[1, 2]` and range `[1-3]`
+forms are explicitly prohibited by the prompt and are not parsed.
