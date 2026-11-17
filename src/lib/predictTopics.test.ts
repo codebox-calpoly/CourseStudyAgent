@@ -11,42 +11,53 @@ test("ranks topics by smoothed report frequency, including empty reports", () =>
     [{ topics: ["Makefiles", "Pointers"] }, { topics: ["Makefiles"] }],
   );
   expect(predictions).toEqual([
-    { topic: "Makefiles", likelihood: 0.75, reportCount: 2, signalCount: 0 },
-    { topic: "Pointers", likelihood: 0.5, reportCount: 1, signalCount: 0 },
+    { topic: "Makefiles", score: 0.75, reportCount: 2, signalCount: 0 },
+    { topic: "Pointers", score: 0.5, reportCount: 1, signalCount: 0 },
   ]);
   expect(
     predictTopics([], [{ topics: ["Makefiles"] }, { topics: [] }])[0],
-  ).toMatchObject({ likelihood: 0.5, reportCount: 1 });
+  ).toMatchObject({ score: 0.5, reportCount: 1 });
 });
 
 test("combines normalized topics and counts each report only once", () => {
   expect(
     predictTopics(
-      [{ topic: "Makefiles", stance: "on_exam", confirms: 0, disputes: 0 }],
+      [{ topic: " Makefiles ", stance: "on_exam", confirms: 0, disputes: 0 }],
       [{ topics: [" makefiles ", "MAKEFILES"] }],
     ),
   ).toEqual([
-    { topic: "Makefiles", likelihood: 2 / 3, reportCount: 1, signalCount: 1 },
+    { topic: "Makefiles", score: 2 / 3, reportCount: 1, signalCount: 1 },
   ]);
 });
 
-test("preserves the first report spelling while combining repeated topics", () => {
-  expect(
-    predictTopics(
-      [],
-      [{ topics: [" makefiles ", "MAKEFILES"] }, { topics: ["MakeFiles"] }],
-    ),
-  ).toEqual([
-    { topic: " makefiles ", likelihood: 0.75, reportCount: 2, signalCount: 0 },
-  ]);
-});
+test.each([
+  [" makefiles ", "makefiles"],
+  [" MakeFiles ", "MakeFiles"],
+])(
+  "trims %j while preserving its first casing",
+  (firstTopic, expectedTopic) => {
+    expect(
+      predictTopics(
+        [],
+        [{ topics: [firstTopic, "MAKEFILES"] }, { topics: ["MakeFiles"] }],
+      ),
+    ).toEqual([
+      {
+        topic: expectedTopic,
+        score: 0.75,
+        reportCount: 2,
+        signalCount: 0,
+      },
+    ]);
+  },
+);
 
 test("treats object property names as ordinary topic names", () => {
   expect(
     predictTopics([], [{ topics: ["__proto__", "constructor", "__PROTO__"] }]),
   ).toEqual([
-    { topic: "__proto__", likelihood: 2 / 3, reportCount: 1, signalCount: 0 },
-    { topic: "constructor", likelihood: 2 / 3, reportCount: 1, signalCount: 0 },
+    { topic: "__proto__", score: 2 / 3, reportCount: 1, signalCount: 0 },
+    { topic: "constructor", score: 2 / 3, reportCount: 1, signalCount: 0 },
   ]);
 });
 
@@ -58,9 +69,9 @@ test("lowers a frequently reported topic when a not_on_exam tip is confirmed", (
     reports,
   );
 
-  expect(baseline.likelihood).toBeCloseTo(11 / 12);
-  expect(prediction.likelihood).toBeCloseTo(0.75);
-  expect(prediction.likelihood).toBeLessThan(baseline.likelihood);
+  expect(baseline.score).toBeCloseTo(11 / 12);
+  expect(prediction.score).toBeCloseTo(0.75);
+  expect(prediction.score).toBeLessThan(baseline.score);
   expect(prediction).toMatchObject({ reportCount: 10, signalCount: 1 });
 });
 
@@ -84,7 +95,7 @@ test("accepts frozen inputs without mutating the evidence", () => {
     reportCount: 1,
     signalCount: 1,
   });
-  expect(prediction.likelihood).toBeCloseTo(5 / 6);
+  expect(prediction.score).toBeCloseTo(5 / 6);
 });
 
 test.each([
@@ -99,7 +110,7 @@ test.each([
       [{ topic: "Makefiles", stance, confirms, disputes }],
       [],
     );
-    expect(prediction.likelihood).toBeCloseTo(expected);
+    expect(prediction.score).toBeCloseTo(expected);
     expect(prediction.signalCount).toBe(1);
   },
 );
@@ -112,7 +123,7 @@ test("ignores info tips entirely", () => {
   expect(predictTopics(signals, [{ topics: ["POINTERS"] }])[0]).toMatchObject({
     topic: "POINTERS",
     signalCount: 0,
-    likelihood: 2 / 3,
+    score: 2 / 3,
   });
 });
 
@@ -129,7 +140,7 @@ test.each([
     })),
     [],
   );
-  expect(prediction.likelihood).toBeCloseTo(expected);
+  expect(prediction.score).toBeCloseTo(expected);
   expect(prediction.signalCount).toBe(100);
 });
 
@@ -145,11 +156,11 @@ test("cancels opposing tips before capping their combined influence", () => {
     [positive, positive, negative, negative],
     [negative, negative, positive, positive],
   ]) {
-    expect(predictTopics(signals, [])[0].likelihood).toBeCloseTo(0.5);
+    expect(predictTopics(signals, [])[0].score).toBeCloseTo(0.5);
   }
 });
 
-test("clamps final likelihoods to zero and one", () => {
+test("clamps final scores to zero and one", () => {
   const predictions = predictTopics(
     [
       { topic: "Frequent", stance: "on_exam", confirms: 100, disputes: 0 },
@@ -157,5 +168,5 @@ test("clamps final likelihoods to zero and one", () => {
     ],
     Array.from({ length: 10 }, () => ({ topics: ["Frequent"] })),
   );
-  expect(predictions.map(({ likelihood }) => likelihood)).toEqual([1, 0]);
+  expect(predictions.map(({ score }) => score)).toEqual([1, 0]);
 });

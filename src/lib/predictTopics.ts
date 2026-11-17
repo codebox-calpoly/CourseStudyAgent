@@ -3,21 +3,21 @@ import { signalScore } from "./signalScore";
 const NEUTRAL_SIGNAL_SCORE = 0.5;
 const MAX_SIGNAL_ADJUSTMENT = 0.4;
 
-type Signal = {
+export type Signal = {
   topic: string;
   stance: "on_exam" | "not_on_exam" | "info";
   confirms: number;
   disputes: number;
 };
 
-type Prediction = {
+export type Prediction = {
   topic: string;
-  likelihood: number;
+  score: number;
   reportCount: number;
   signalCount: number;
 };
 
-type TopicTotals = Omit<Prediction, "likelihood"> & { adjustment: number };
+type TopicTotals = Omit<Prediction, "score"> & { adjustment: number };
 
 export function predictTopics(
   signals: readonly Signal[],
@@ -26,10 +26,16 @@ export function predictTopics(
   const topics = new Map<string, TopicTotals>();
 
   function getTopic(topic: string): TopicTotals {
-    const key = topic.trim().toLowerCase();
+    const displayTopic = topic.trim();
+    const key = displayTopic.toLowerCase();
     let entry = topics.get(key);
     if (!entry) {
-      entry = { topic, reportCount: 0, signalCount: 0, adjustment: 0 };
+      entry = {
+        topic: displayTopic,
+        reportCount: 0,
+        signalCount: 0,
+        adjustment: 0,
+      };
       topics.set(key, entry);
     }
     return entry;
@@ -55,6 +61,8 @@ export function predictTopics(
     }
   }
 
+  // A topic absent from all reports starts at 1 / (reports.length + 2):
+  // 0.5 with no reports, or 1/12 with 10, before signal adjustments.
   const reportDenominator = reports.length + 2;
 
   return Array.from(topics.values(), ({ adjustment, ...prediction }) => {
@@ -66,7 +74,7 @@ export function predictTopics(
     );
     return {
       ...prediction,
-      likelihood: Math.max(0, Math.min(1, reportRate + cappedAdjustment)),
+      score: Math.max(0, Math.min(1, reportRate + cappedAdjustment)),
     };
-  }).sort((a, b) => b.likelihood - a.likelihood);
+  }).sort((a, b) => b.score - a.score);
 }
