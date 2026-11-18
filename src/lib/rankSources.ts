@@ -1,4 +1,5 @@
 import { signalScore } from "./signalScore";
+// import type { fileKind } from "@/server/db/schema";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const RECENCY_HALF_LIFE_DAYS = 120;
@@ -7,6 +8,8 @@ const MIN_RECENCY = 0.25;
 export type SourceCandidate = {
   id: string;
   similarity: number;
+  // kind: (typeof fileKind.enumValues)[number] | "signal";
+  // Remove next line, uncomment above code
   kind: "lecture_notes" | "notes" | "rubric" | "past_exam" | "signal";
   date: Date;
   confirms?: number;
@@ -26,6 +29,9 @@ export function rankSources<T extends SourceCandidate>(
   return candidates
     .map((candidate) => {
       const date = candidate.date.getTime();
+      if (Number.isNaN(date)) {
+        throw new RangeError("Source date must be valid.");
+      }
       const ageDays = Math.max(0, (currentTime - date) / MILLISECONDS_PER_DAY);
       const recency = Math.max(
         MIN_RECENCY,
@@ -36,7 +42,11 @@ export function rankSources<T extends SourceCandidate>(
           ? signalScore(candidate.confirms ?? 0, candidate.disputes ?? 0)
           : 1;
 
-      return { candidate, date, score: candidate.similarity * recency * trust };
+      return {
+        candidate,
+        date,
+        score: Math.max(0, candidate.similarity) * recency * trust,
+      };
     })
     .sort((a, b) => b.score - a.score || b.date - a.date)
     .slice(0, limit)

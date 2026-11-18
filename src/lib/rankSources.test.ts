@@ -15,6 +15,15 @@ test("returns no sources for an empty candidate list", () => {
   expect(rankSources([], 5, NOW)).toEqual([]);
 });
 
+test("rejects an invalid source date", () => {
+  const invalid = source("invalid", { date: new Date(NaN) });
+
+  expect(() => rankSources([invalid], 1, NOW)).toThrow(RangeError);
+  expect(() => rankSources([invalid], 1, NOW)).toThrow(
+    "Source date must be valid.",
+  );
+});
+
 test("ranks equally recent and trusted sources by similarity", () => {
   const low = source("low", { similarity: 0.2 });
   const high = source("high", { similarity: 0.9 });
@@ -31,6 +40,21 @@ test("prefers newer sources when similarity and trust are equal", () => {
 
   expect(rankSources([older, newer], 2, NOW)).toEqual([newer, older]);
 });
+
+test.each([0, -0.8])(
+  "treats negative similarity as zero when compared with %s similarity",
+  (similarity) => {
+    const newer = source("newer", { similarity: -0.8 });
+    const older = source("older", {
+      similarity,
+      kind: "signal",
+      disputes: 100,
+      date: new Date(NOW.getTime() - 240 * MILLISECONDS_PER_DAY),
+    });
+
+    expect(rankSources([older, newer], 2, NOW)).toEqual([newer, older]);
+  },
+);
 
 test.each([
   [120, 0.5],
