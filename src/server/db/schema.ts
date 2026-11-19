@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   foreignKey,
+  index,
   pgEnum,
   pgTable,
   text,
@@ -114,6 +115,10 @@ export const chunks = pgTable(
       columns: [table.fileId, table.classId],
       foreignColumns: [files.id, files.classId],
     }).onDelete("cascade"),
+    index("chunks_embedding_hnsw_index").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops"),
+    ),
   ],
 );
 
