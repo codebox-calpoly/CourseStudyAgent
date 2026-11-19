@@ -36,7 +36,7 @@ describe("buildPrompt", () => {
     // Check required instruction concepts, not full sentences or section labels.
     expect(prompt).toMatch(/only[^.\n]*sources/i);
 
-    expect(prompt).toMatch(/cite[^.\n]*numbers/i);
+    expect(prompt).toMatch(/cite[^.\n]*number/i);
     expect(prompt).toMatch(/sources[^.\n]*do not cover[^.\n]*don['’]t know/i);
   });
 
@@ -60,4 +60,10 @@ describe("buildPrompt", () => {
     );
     expect(buildPrompt(question, chunks)).toContain(question);
   });
+});
+
+it("instructs separate citation syntax rather than groups or ranges", () => {
+  const prompt = buildPrompt("Question", []);
+  expect(prompt).toContain("[n]");
+  expect(prompt).toContain("Never group citations as [1, 2] or [1-3]");
 });
