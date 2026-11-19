@@ -1,12 +1,17 @@
 import { readFile } from "node:fs/promises";
 
 import JSZip from "jszip";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { extractText } from "./extractText";
 
 const PPTX_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const MAX_PPTX_UNCOMPRESSED_SIZE_BYTES = 50 * 1024 * 1024;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("extractText", () => {
   it("extracts known text from a PDF fixture under 5 KB", async () => {
@@ -41,6 +46,20 @@ describe("extractText", () => {
     ].join("\n\n");
 
     await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(expected);
+  });
+
+  it("decodes decimal and hexadecimal numeric PPTX entities", async () => {
+    const zip = new JSZip();
+    zip.file(
+      "ppt/slides/slide1.xml",
+      "<p:sld><a:t>PowerPoint&#8217;s &#x201C;smart quotes&#x201D;</a:t></p:sld>",
+    );
+
+    const bytes = await zip.generateAsync({ type: "uint8array" });
+
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(
+      "PowerPoint’s “smart quotes”",
+    );
   });
 
   it("extracts multiple PPTX text runs with attributes in order", async () => {
@@ -85,6 +104,84 @@ describe("extractText", () => {
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
     await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe("");
+  });
+
+  it("rejects a PPTX over the 50 MB uncompressed limit before reading files", async () => {
+    const readSlide = vi.fn();
+    vi.spyOn(JSZip, "loadAsync").mockResolvedValue({
+      files: {
+        "ppt/slides/slide1.xml": {
+          name: "ppt/slides/slide1.xml",
+          dir: false,
+          _data: {
+            uncompressedSize: MAX_PPTX_UNCOMPRESSED_SIZE_BYTES + 1,
+          },
+          async: readSlide,
+        },
+      },
+    } as unknown as JSZip);
+
+    await expect(extractText(new Uint8Array(), PPTX_MIME_TYPE)).rejects.toThrow(
+      "PPTX uncompressed size exceeds 50 MB",
+    );
+    expect(readSlide).not.toHaveBeenCalled();
+  });
+
+  it("allows a PPTX exactly at the 50 MB uncompressed limit", async () => {
+    const readSlide = vi
+      .fn()
+      .mockResolvedValue("<p:sld><a:t>At the limit</a:t></p:sld>");
+    vi.spyOn(JSZip, "loadAsync").mockResolvedValue({
+      files: {
+        "ppt/slides/slide1.xml": {
+          name: "ppt/slides/slide1.xml",
+          dir: false,
+          _data: {
+            uncompressedSize: MAX_PPTX_UNCOMPRESSED_SIZE_BYTES,
+          },
+          async: readSlide,
+        },
+      },
+    } as unknown as JSZip);
+
+    await expect(extractText(new Uint8Array(), PPTX_MIME_TYPE)).resolves.toBe(
+      "At the limit",
+    );
+    expect(readSlide).toHaveBeenCalledOnce();
+  });
+
+  it("does not count files that are not decompressed toward the limit", async () => {
+    const readSlide = vi
+      .fn()
+      .mockResolvedValue("<p:sld><a:t>Visible slide</a:t></p:sld>");
+    const readVideo = vi.fn();
+
+    vi.spyOn(JSZip, "loadAsync").mockResolvedValue({
+      files: {
+        "ppt/media/video1.mp4": {
+          name: "ppt/media/video1.mp4",
+          dir: false,
+          _data: {
+            uncompressedSize: MAX_PPTX_UNCOMPRESSED_SIZE_BYTES + 1,
+          },
+          async: readVideo,
+        },
+        "ppt/slides/slide1.xml": {
+          name: "ppt/slides/slide1.xml",
+          dir: false,
+          _data: {
+            uncompressedSize: 1,
+          },
+          async: readSlide,
+        },
+      },
+    } as unknown as JSZip);
+
+    await expect(extractText(new Uint8Array(), PPTX_MIME_TYPE)).resolves.toBe(
+      "Visible slide",
+    );
+    expect(readVideo).not.toHaveBeenCalled();
+    expect(readSlide).toHaveBeenCalledOnce();
   });
 
   it("decodes UTF-8 text and normalizes surrounding and repeated newlines", async () => {
