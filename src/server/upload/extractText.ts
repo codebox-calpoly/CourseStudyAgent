@@ -32,6 +32,21 @@ function decodeXmlEntities(text: string): string {
     );
 }
 
+function extractSlideText(xml: string): string {
+  const paragraphs = Array.from(
+    xml.matchAll(/<a:p(?:\s[^>]*)?>([\s\S]*?)<\/a:p>/g),
+    (paragraphMatch) =>
+      Array.from(
+        (paragraphMatch[1] ?? "").matchAll(
+          /<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g,
+        ),
+        (textMatch) => decodeXmlEntities(textMatch[1] ?? ""),
+      ).join(""),
+  );
+
+  return paragraphs.filter(Boolean).join("\n");
+}
+
 function assertPptxSizeWithinLimit(files: JSZip.JSZipObject[]): void {
   let totalUncompressedSize = 0;
 
@@ -80,12 +95,7 @@ async function extractPptxText(bytes: Uint8Array): Promise<string> {
     slides.map(async ({ file }) => {
       const xml = await file.async("string");
 
-      const textRuns = Array.from(
-        xml.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g),
-        (match) => decodeXmlEntities(match[1] ?? ""),
-      );
-
-      return textRuns.join("");
+      return extractSlideText(xml);
     }),
   );
 

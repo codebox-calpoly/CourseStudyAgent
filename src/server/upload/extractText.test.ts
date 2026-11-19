@@ -35,7 +35,7 @@ describe("extractText", () => {
 
       zip.file(
         `ppt/slides/slide${slideNumber}.xml`,
-        `<p:sld><a:t>${slideText}</a:t></p:sld>`,
+        `<p:sld><a:p><a:t>${slideText}</a:t></a:p></p:sld>`,
       );
     }
 
@@ -52,7 +52,7 @@ describe("extractText", () => {
     const zip = new JSZip();
     zip.file(
       "ppt/slides/slide1.xml",
-      "<p:sld><a:t>PowerPoint&#8217;s &#x201C;smart quotes&#x201D;</a:t></p:sld>",
+      "<p:sld><a:p><a:t>PowerPoint&#8217;s &#x201C;smart quotes&#x201D;</a:t></a:p></p:sld>",
     );
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
@@ -66,7 +66,7 @@ describe("extractText", () => {
     const zip = new JSZip();
     zip.file(
       "ppt/slides/slide1.xml",
-      '<p:sld><a:t xml:space="preserve">Hello </a:t><a:t>world</a:t></p:sld>',
+      '<p:sld><a:p><a:t xml:space="preserve">Hello </a:t><a:t>world</a:t></a:p></p:sld>',
     );
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
@@ -76,15 +76,29 @@ describe("extractText", () => {
     );
   });
 
+  it("separates PPTX paragraphs without separating runs within a paragraph", async () => {
+    const zip = new JSZip();
+    zip.file(
+      "ppt/slides/slide1.xml",
+      '<p:sld><a:p><a:t>Processes</a:t></a:p><a:p><a:t xml:space="preserve">Isolated </a:t><a:t>memory</a:t></a:p></p:sld>',
+    );
+
+    const bytes = await zip.generateAsync({ type: "uint8array" });
+
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(
+      "Processes\nIsolated memory",
+    );
+  });
+
   it("ignores non-slide files in a PPTX archive", async () => {
     const zip = new JSZip();
     zip.file(
       "ppt/slides/slide1.xml",
-      "<p:sld><a:t>Visible slide</a:t></p:sld>",
+      "<p:sld><a:p><a:t>Visible slide</a:t></a:p></p:sld>",
     );
     zip.file(
       "ppt/notesSlides/slide1.xml",
-      "<p:notes><a:t>Ignored speaker notes</a:t></p:notes>",
+      "<p:notes><a:p><a:t>Ignored speaker notes</a:t></a:p></p:notes>",
     );
     zip.file("ppt/theme/theme1.xml", "<a:t>Ignored theme text</a:t>");
     zip.file("ppt/media/image1.png", new Uint8Array([1, 2, 3]));
@@ -130,7 +144,7 @@ describe("extractText", () => {
   it("allows a PPTX exactly at the 50 MB uncompressed limit", async () => {
     const readSlide = vi
       .fn()
-      .mockResolvedValue("<p:sld><a:t>At the limit</a:t></p:sld>");
+      .mockResolvedValue("<p:sld><a:p><a:t>At the limit</a:t></a:p></p:sld>");
     vi.spyOn(JSZip, "loadAsync").mockResolvedValue({
       files: {
         "ppt/slides/slide1.xml": {
@@ -153,7 +167,7 @@ describe("extractText", () => {
   it("does not count files that are not decompressed toward the limit", async () => {
     const readSlide = vi
       .fn()
-      .mockResolvedValue("<p:sld><a:t>Visible slide</a:t></p:sld>");
+      .mockResolvedValue("<p:sld><a:p><a:t>Visible slide</a:t></a:p></p:sld>");
     const readVideo = vi.fn();
 
     vi.spyOn(JSZip, "loadAsync").mockResolvedValue({
