@@ -1,6 +1,8 @@
 import JSZip from "jszip";
 import { extractText as extractPdfText } from "unpdf";
 
+import type { AllowedMimeType } from "@/lib/validateUpload";
+
 const MAX_PPTX_UNCOMPRESSED_SIZE_BYTES = 50 * 1024 * 1024;
 
 type ZipFileWithSize = JSZip.JSZipObject & {
@@ -111,24 +113,29 @@ function normalizeText(text: string): string {
 
 export async function extractText(
   bytes: Uint8Array,
-  mimeType: string,
+  mimeType: AllowedMimeType,
 ): Promise<string> {
   let text: string;
 
-  if (mimeType === "application/pdf") {
-    const result = await extractPdfText(bytes, { mergePages: true });
-    text = result.text;
-  } else if (
-    mimeType ===
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-  ) {
-    text = await extractPptxText(bytes);
-  } else if (mimeType === "text/plain") {
-    text = new TextDecoder("utf-8").decode(bytes);
-  } else if (mimeType === "image/png" || mimeType === "image/jpeg") {
-    return "";
-  } else {
-    throw new Error(`Unsupported MIME type: ${mimeType}`);
+  switch (mimeType) {
+    case "application/pdf": {
+      const result = await extractPdfText(bytes, { mergePages: true });
+      text = result.text;
+      break;
+    }
+    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+      text = await extractPptxText(bytes);
+      break;
+    case "text/plain":
+      text = new TextDecoder("utf-8").decode(bytes);
+      break;
+    case "image/png":
+    case "image/jpeg":
+      return "";
+    default: {
+      const unhandledMimeType: never = mimeType;
+      throw new Error(`Unhandled MIME type: ${unhandledMimeType}`);
+    }
   }
 
   return normalizeText(text);

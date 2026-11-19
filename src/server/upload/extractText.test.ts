@@ -228,7 +228,7 @@ describe("extractText", () => {
     );
   });
 
-  it.each(["image/png", "image/jpeg"])(
+  it.each(["image/png", "image/jpeg"] as const)(
     "returns empty text for %s images",
     async (mimeType) => {
       await expect(
@@ -236,12 +236,6 @@ describe("extractText", () => {
       ).resolves.toBe("");
     },
   );
-
-  it("throws for an unsupported MIME type", async () => {
-    await expect(
-      extractText(new Uint8Array(), "application/octet-stream"),
-    ).rejects.toThrow("Unsupported MIME type: application/octet-stream");
-  });
 
   it("rejects corrupted PDF data", async () => {
     const bytes = new TextEncoder().encode("not a valid PDF");
