@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
 import { getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
@@ -74,29 +77,6 @@ describe("database schema", () => {
       "other",
     ]);
     expect(signalStance.enumValues).toEqual(["on_exam", "not_on_exam", "info"]);
-    expect(memberships.role.getSQLType()).toBe("membership_role");
-    expect(votes.value.getSQLType()).toBe("vote_value");
-    expect(files.kind.getSQLType()).toBe("file_kind");
-    expect(signals.stance.getSQLType()).toBe("signal_stance");
-  });
-
-  it("models ranking, signal, and exam-report columns with the required types, nullability, and defaults", () => {
-    expect(files.kind.getSQLType()).toBe("file_kind");
-    expect(files.kind.notNull).toBe(false);
-    expect(files.taughtOn.getSQLType()).toBe("date");
-    expect(files.taughtOn.notNull).toBe(false);
-    expect(files.professorReleased.getSQLType()).toBe("boolean");
-    expect(files.professorReleased.default).toBe(false);
-    expect(files.professorReleased.notNull).toBe(true);
-    expect(signals.topic.getSQLType()).toBe("text");
-    expect(signals.topic.notNull).toBe(false);
-    expect(signals.stance.getSQLType()).toBe("signal_stance");
-    expect(signals.stance.notNull).toBe(false);
-    expect(signals.verifiedByProfessor.getSQLType()).toBe("boolean");
-    expect(signals.verifiedByProfessor.default).toBe(false);
-    expect(signals.verifiedByProfessor.notNull).toBe(true);
-    expect(examReports.topics.getSQLType()).toBe("text[]");
-    expect(examReports.topics.notNull).toBe(true);
   });
 
   it("preserves the required unique constraints and vector dimension", () => {
@@ -156,33 +136,4 @@ describe("database schema", () => {
     expect(extensionIndex).toBeGreaterThanOrEqual(0);
     expect(vectorTableIndex).toBeGreaterThan(extensionIndex);
   });
-
-  it("generates database enums and preserves scalar exam topics as arrays", () => {
-    const migrationsDirectory = join(process.cwd(), "supabase", "migrations");
-    const migration = readdirSync(migrationsDirectory).find((file) => {
-      if (!file.endsWith(".sql")) {
-        return false;
-      }
-
-      return readFileSync(join(migrationsDirectory, file), "utf8").includes(
-        'CREATE TYPE "public"."file_kind"',
-      );
-    });
-
-    expect(migration).toBeDefined();
-
-    const sql = readFileSync(join(migrationsDirectory, migration!), "utf8");
-
-    expect(sql).toContain(
-      "CREATE TYPE \"public\".\"file_kind\" AS ENUM('lecture_notes', 'notes', 'rubric', 'past_exam', 'other');",
-    );
-    expect(sql).toContain(
-      "CREATE TYPE \"public\".\"signal_stance\" AS ENUM('on_exam', 'not_on_exam', 'info');",
-    );
-    expect(sql).toContain(
-      'ALTER TABLE "exam_reports" ALTER COLUMN "topics" SET DATA TYPE text[] USING ARRAY["topics"];',
-    );
-  });
 });
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";

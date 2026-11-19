@@ -90,7 +90,7 @@ export const files = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     storagePath: text("storage_path").notNull(),
-    kind: fileKind("kind"),
+    kind: fileKind("kind").default("other").notNull(),
     taughtOn: date("taught_on"),
     professorReleased: boolean("professor_released").default(false).notNull(),
   },
@@ -128,7 +128,7 @@ export const signals = pgTable("signals", {
     .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   topic: text("topic"),
-  stance: signalStance("stance"),
+  stance: signalStance("stance").default("info").notNull(),
   verifiedByProfessor: boolean("verified_by_professor")
     .default(false)
     .notNull(),
