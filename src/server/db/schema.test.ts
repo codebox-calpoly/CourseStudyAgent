@@ -1,8 +1,6 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-
 import { getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
+import { authUsers } from "drizzle-orm/supabase";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -98,14 +96,35 @@ describe("database schema", () => {
     });
   });
 
-  it("creates the pgvector extension before creating vector columns", () => {
-    const migration = readdirSync(join(process.cwd(), "drizzle")).find(
-      (file) => file.startsWith("0000_") && file.endsWith(".sql"),
+  it("uses Supabase Auth identities without copying their email addresses", () => {
+    const [foreignKey] = getTableConfig(users).foreignKeys;
+
+    expect(foreignKey.reference().foreignTable).toBe(authUsers);
+    expect(foreignKey.onDelete).toBe("cascade");
+    expect(
+      getTableConfig(users).columns.map((column) => column.name),
+    ).not.toContain("email");
+  });
+
+  it("enables pgvector before creating vector columns", () => {
+    const migrationsDirectory = join(process.cwd(), "supabase", "migrations");
+    const migrations = readdirSync(migrationsDirectory)
+      .filter((file) => file.endsWith(".sql"))
+      .sort();
+    const extensionIndex = migrations.findIndex((migration) =>
+      readFileSync(join(migrationsDirectory, migration), "utf8").includes(
+        "CREATE EXTENSION IF NOT EXISTS vector;",
+      ),
+    );
+    const vectorTableIndex = migrations.findIndex((migration) =>
+      readFileSync(join(migrationsDirectory, migration), "utf8").includes(
+        'embedding" vector(1536)',
+      ),
     );
 
-    expect(migration).toBeDefined();
-    expect(
-      readFileSync(join(process.cwd(), "drizzle", migration!), "utf8"),
-    ).toMatch(/^CREATE EXTENSION IF NOT EXISTS vector;/);
+    expect(extensionIndex).toBeGreaterThanOrEqual(0);
+    expect(vectorTableIndex).toBeGreaterThan(extensionIndex);
   });
 });
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";

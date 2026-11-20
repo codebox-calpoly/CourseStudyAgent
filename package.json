@@ -10,13 +10,18 @@
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "ai": "^7.0.173",
     "drizzle-orm": "^0.45.4",
     "jszip": "^3.10.2",
     "next": "16.4.5",
+    "postgres": "^4.1.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",

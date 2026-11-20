@@ -10,6 +10,7 @@ import {
   vector,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { authUsers } from "drizzle-orm/supabase";
 
 const id = () => uuid("id").defaultRandom().primaryKey();
 const createdAt = () =>
@@ -22,9 +23,10 @@ export const membershipRole = pgEnum("membership_role", [
 export const voteValue = pgEnum("vote_value", ["confirm", "dispute"]);
 
 export const users = pgTable("users", {
-  id: id(),
+  id: uuid("id")
+    .primaryKey()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
   createdAt: createdAt(),
-  email: text("email").notNull().unique(),
 });
 
 export const classes = pgTable("classes", {
