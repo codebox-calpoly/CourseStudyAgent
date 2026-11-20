@@ -1,3 +1,5 @@
+import { posix as path } from "node:path";
+
 import JSZip from "jszip";
 import { extractText as extractPdfText } from "unpdf";
 
@@ -51,6 +53,62 @@ function extractSlideText(xml: string): string {
   return paragraphs.filter(Boolean).join("\n");
 }
 
+function getXmlAttribute(element: string, name: string): string | undefined {
+  const match = new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`).exec(
+    element,
+  );
+  const value = match?.[1] ?? match?.[2];
+
+  return value === undefined ? undefined : decodeXmlEntities(value);
+}
+
+function findNotesTarget(relationshipsXml: string): string | undefined {
+  for (const match of relationshipsXml.matchAll(
+    /<Relationship\b[^>]*\/?\s*>/g,
+  )) {
+    const relationship = match[0];
+    const type = getXmlAttribute(relationship, "Type");
+
+    if (
+      type?.endsWith("/notesSlide") &&
+      getXmlAttribute(relationship, "TargetMode") !== "External"
+    ) {
+      return getXmlAttribute(relationship, "Target");
+    }
+  }
+
+  return undefined;
+}
+
+function resolveRelationshipTarget(sourcePath: string, target: string): string {
+  if (target.startsWith("/")) {
+    return path.normalize(target.slice(1));
+  }
+
+  return path.normalize(path.join(path.dirname(sourcePath), target));
+}
+
+function extractSpeakerNotesText(xml: string): string {
+  const bodyShapeTexts: string[] = [];
+
+  for (const match of xml.matchAll(/<p:sp(?:\s[^>]*)?>[\s\S]*?<\/p:sp>/g)) {
+    const shape = match[0];
+    const placeholder = /<p:ph\b[^>]*\/?\s*>/.exec(shape)?.[0];
+
+    if (!placeholder || getXmlAttribute(placeholder, "type") !== "body") {
+      continue;
+    }
+
+    bodyShapeTexts.push(extractSlideText(shape));
+  }
+
+  return bodyShapeTexts.filter(Boolean).join("\n");
+}
+
+function uniqueZipFiles(files: JSZip.JSZipObject[]): JSZip.JSZipObject[] {
+  return [...new Map(files.map((file) => [file.name, file])).values()];
+}
+
 function assertPptxSizeWithinLimit(files: JSZip.JSZipObject[]): void {
   let totalUncompressedSize = 0;
 
@@ -95,15 +153,77 @@ async function extractPptxSections(
     })
     .sort((first, second) => first.number - second.number);
 
-  assertPptxSizeWithinLimit(slides.map(({ file }) => file));
+  const slidesWithRelationships = slides.map((slide) => {
+    const relationshipPath = path.join(
+      path.dirname(slide.file.name),
+      "_rels",
+      `${path.basename(slide.file.name)}.rels`,
+    );
+    const relationshipFile = zip.files[relationshipPath];
+
+    return {
+      ...slide,
+      relationshipFile:
+        relationshipFile && !relationshipFile.dir
+          ? relationshipFile
+          : undefined,
+    };
+  });
+
+  assertPptxSizeWithinLimit(
+    uniqueZipFiles(
+      slidesWithRelationships.flatMap(({ file, relationshipFile }) =>
+        relationshipFile ? [file, relationshipFile] : [file],
+      ),
+    ),
+  );
+
+  const notesFiles = await Promise.all(
+    slidesWithRelationships.map(async ({ file, relationshipFile }) => {
+      if (!relationshipFile) {
+        return undefined;
+      }
+
+      const relationshipsXml = await relationshipFile.async("string");
+      const notesTarget = findNotesTarget(relationshipsXml);
+
+      if (!notesTarget) {
+        return undefined;
+      }
+
+      const notesPath = resolveRelationshipTarget(file.name, notesTarget);
+      const notesFile = zip.files[notesPath];
+
+      return notesFile && !notesFile.dir ? notesFile : undefined;
+    }),
+  );
+
+  assertPptxSizeWithinLimit(
+    uniqueZipFiles([
+      ...slidesWithRelationships.flatMap(({ file, relationshipFile }) =>
+        relationshipFile ? [file, relationshipFile] : [file],
+      ),
+      ...notesFiles.filter(
+        (file): file is JSZip.JSZipObject => file !== undefined,
+      ),
+    ]),
+  );
 
   return Promise.all(
-    slides.map(async ({ number, file }) => {
-      const xml = await file.async("string");
+    slidesWithRelationships.map(async ({ number, file }, index) => {
+      const notesFile = notesFiles[index];
+      const [xml, notesXml] = await Promise.all([
+        file.async("string"),
+        notesFile?.async("string"),
+      ]);
+      const slideText = extractSlideText(xml);
+      const notesText = notesXml ? extractSpeakerNotesText(notesXml) : "";
 
       return {
         page: number,
-        text: extractSlideText(xml),
+        text: notesText
+          ? `${slideText}\n\nSpeaker notes:\n${notesText}`
+          : slideText,
       };
     }),
   );

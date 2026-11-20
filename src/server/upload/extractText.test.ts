@@ -118,6 +118,35 @@ describe("extractText", () => {
     ]);
   });
 
+  it("extracts body speaker notes through the slide relationship", async () => {
+    const zip = new JSZip();
+    zip.file(
+      "ppt/slides/slide1.xml",
+      "<p:sld><a:p><a:t>Processes</a:t></a:p></p:sld>",
+    );
+    zip.file(
+      "ppt/slides/_rels/slide1.xml.rels",
+      '<Relationships><Relationship Target="../notesSlides/notesSlide3.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" /></Relationships>',
+    );
+    zip.file(
+      "ppt/notesSlides/notesSlide1.xml",
+      '<p:notes><p:sp><p:nvSpPr><p:nvPr><p:ph type="body" /></p:nvPr></p:nvSpPr><p:txBody><a:p><a:t>Wrong notes</a:t></a:p></p:txBody></p:sp></p:notes>',
+    );
+    zip.file(
+      "ppt/notesSlides/notesSlide3.xml",
+      '<p:notes><p:sp><p:nvSpPr><p:nvPr><p:ph type="sldNum" /></p:nvPr></p:nvSpPr><p:txBody><a:p><a:t>1</a:t></a:p></p:txBody></p:sp><p:sp><p:nvSpPr><p:nvPr><p:ph idx="1" type="body" /></p:nvPr></p:nvSpPr><p:txBody><a:p><a:t>Explain </a:t><a:t>process isolation.</a:t></a:p><a:p><a:t>Compare shared memory.</a:t></a:p></p:txBody></p:sp></p:notes>',
+    );
+
+    const bytes = await zip.generateAsync({ type: "uint8array" });
+
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([
+      {
+        page: 1,
+        text: "Processes\n\nSpeaker notes:\nExplain process isolation.\nCompare shared memory.",
+      },
+    ]);
+  });
+
   it("ignores non-slide files in a PPTX archive", async () => {
     const zip = new JSZip();
     zip.file(
@@ -182,6 +211,48 @@ describe("extractText", () => {
       "PPTX uncompressed size exceeds 50 MB",
     );
     expect(readSlide).not.toHaveBeenCalled();
+  });
+
+  it("counts referenced speaker notes toward the uncompressed limit", async () => {
+    const readSlide = vi.fn();
+    const readRelationships = vi
+      .fn()
+      .mockResolvedValue(
+        '<Relationships><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide3.xml" /></Relationships>',
+      );
+    const readNotes = vi.fn();
+
+    vi.spyOn(JSZip, "loadAsync").mockResolvedValue({
+      files: {
+        "ppt/slides/slide1.xml": {
+          name: "ppt/slides/slide1.xml",
+          dir: false,
+          _data: { uncompressedSize: 1 },
+          async: readSlide,
+        },
+        "ppt/slides/_rels/slide1.xml.rels": {
+          name: "ppt/slides/_rels/slide1.xml.rels",
+          dir: false,
+          _data: { uncompressedSize: 1 },
+          async: readRelationships,
+        },
+        "ppt/notesSlides/notesSlide3.xml": {
+          name: "ppt/notesSlides/notesSlide3.xml",
+          dir: false,
+          _data: {
+            uncompressedSize: MAX_PPTX_UNCOMPRESSED_SIZE_BYTES,
+          },
+          async: readNotes,
+        },
+      },
+    } as unknown as JSZip);
+
+    await expect(extractText(new Uint8Array(), PPTX_MIME_TYPE)).rejects.toThrow(
+      "PPTX uncompressed size exceeds 50 MB",
+    );
+    expect(readRelationships).toHaveBeenCalledOnce();
+    expect(readSlide).not.toHaveBeenCalled();
+    expect(readNotes).not.toHaveBeenCalled();
   });
 
   it("allows a PPTX exactly at the 50 MB uncompressed limit", async () => {
