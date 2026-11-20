@@ -1,5 +1,7 @@
 import { EMBEDDING_DIMENSIONS } from "../../lib/aiConfig";
 import {
+  boolean,
+  date,
   foreignKey,
   pgEnum,
   pgTable,
@@ -21,6 +23,18 @@ export const membershipRole = pgEnum("membership_role", [
   "professor",
 ]);
 export const voteValue = pgEnum("vote_value", ["confirm", "dispute"]);
+export const fileKind = pgEnum("file_kind", [
+  "lecture_notes",
+  "notes",
+  "rubric",
+  "past_exam",
+  "other",
+]);
+export const signalStance = pgEnum("signal_stance", [
+  "on_exam",
+  "not_on_exam",
+  "info",
+]);
 
 export const users = pgTable("users", {
   id: uuid("id")
@@ -77,6 +91,9 @@ export const files = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     storagePath: text("storage_path").notNull(),
+    kind: fileKind("kind").default("other").notNull(),
+    taughtOn: date("taught_on"),
+    professorReleased: boolean("professor_released").default(false).notNull(),
   },
   (table) => [unique().on(table.id, table.classId)],
 );
@@ -113,6 +130,11 @@ export const signals = pgTable("signals", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
+  topic: text("topic"),
+  stance: signalStance("stance").default("info").notNull(),
+  verifiedByProfessor: boolean("verified_by_professor")
+    .default(false)
+    .notNull(),
 });
 
 export const votes = pgTable(
@@ -141,7 +163,7 @@ export const examReports = pgTable("exam_reports", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   examName: text("exam_name").notNull(),
-  topics: text("topics").notNull(),
+  topics: text("topics").array().notNull(),
 });
 
 export const prerequisites = pgTable(

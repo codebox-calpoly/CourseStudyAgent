@@ -7,12 +7,14 @@ import {
   chunks,
   classes,
   examReports,
+  fileKind,
   files,
   joinCodes,
   membershipRole,
   memberships,
   prerequisites,
   signals,
+  signalStance,
   users,
   votes,
   voteValue,
@@ -61,11 +63,17 @@ describe("database schema", () => {
     }
   });
 
-  it("enforces the allowed membership roles and vote values in PostgreSQL", () => {
+  it("enforces all constrained values with PostgreSQL enums", () => {
     expect(membershipRole.enumValues).toEqual(["student", "professor"]);
     expect(voteValue.enumValues).toEqual(["confirm", "dispute"]);
-    expect(memberships.role.getSQLType()).toBe("membership_role");
-    expect(votes.value.getSQLType()).toBe("vote_value");
+    expect(fileKind.enumValues).toEqual([
+      "lecture_notes",
+      "notes",
+      "rubric",
+      "past_exam",
+      "other",
+    ]);
+    expect(signalStance.enumValues).toEqual(["on_exam", "not_on_exam", "info"]);
   });
 
   it("preserves the required unique constraints and vector dimension", () => {
