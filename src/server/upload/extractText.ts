@@ -3,6 +3,8 @@ import { extractText as extractPdfText } from "unpdf";
 
 import type { AllowedMimeType } from "@/lib/validateUpload";
 
+export type ExtractedSection = { page: number | null; text: string };
+
 const MAX_PPTX_UNCOMPRESSED_SIZE_BYTES = 50 * 1024 * 1024;
 
 type ZipFileWithSize = JSZip.JSZipObject & {
@@ -71,7 +73,9 @@ function assertPptxSizeWithinLimit(files: JSZip.JSZipObject[]): void {
   }
 }
 
-async function extractPptxText(bytes: Uint8Array): Promise<string> {
+async function extractPptxSections(
+  bytes: Uint8Array,
+): Promise<ExtractedSection[]> {
   const zip = await JSZip.loadAsync(bytes);
 
   const slides = Object.values(zip.files)
@@ -93,15 +97,16 @@ async function extractPptxText(bytes: Uint8Array): Promise<string> {
 
   assertPptxSizeWithinLimit(slides.map(({ file }) => file));
 
-  const slideTexts = await Promise.all(
-    slides.map(async ({ file }) => {
+  return Promise.all(
+    slides.map(async ({ number, file }) => {
       const xml = await file.async("string");
 
-      return extractSlideText(xml);
+      return {
+        page: number,
+        text: extractSlideText(xml),
+      };
     }),
   );
-
-  return slideTexts.join("\n\n");
 }
 
 function normalizeText(text: string): string {
@@ -114,29 +119,44 @@ function normalizeText(text: string): string {
 export async function extractText(
   bytes: Uint8Array,
   mimeType: AllowedMimeType,
-): Promise<string> {
-  let text: string;
+): Promise<ExtractedSection[]> {
+  let sections: ExtractedSection[];
 
   switch (mimeType) {
     case "application/pdf": {
-      const result = await extractPdfText(bytes, { mergePages: true });
-      text = result.text;
+      const result = await extractPdfText(bytes, { mergePages: false });
+
+      sections = result.text.map((text, index) => ({
+        page: index + 1,
+        text,
+      }));
       break;
     }
     case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      text = await extractPptxText(bytes);
+      sections = await extractPptxSections(bytes);
       break;
     case "text/plain":
-      text = new TextDecoder("utf-8").decode(bytes);
+      sections = [
+        {
+          page: null,
+          text: new TextDecoder("utf-8").decode(bytes),
+        },
+      ];
       break;
     case "image/png":
     case "image/jpeg":
-      return "";
+      sections = [];
+      break;
     default: {
       const unhandledMimeType: never = mimeType;
       throw new Error(`Unhandled MIME type: ${unhandledMimeType}`);
     }
   }
 
-  return normalizeText(text);
+  return sections
+    .map((section) => ({
+      ...section,
+      text: normalizeText(section.text),
+    }))
+    .filter((section) => section.text.length > 0);
 }

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import JSZip from "jszip";
+import { extractText as extractPdfText } from "unpdf";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { extractText } from "./extractText";
@@ -9,7 +10,17 @@ const PPTX_MIME_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const MAX_PPTX_UNCOMPRESSED_SIZE_BYTES = 50 * 1024 * 1024;
 
+vi.mock("unpdf", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("unpdf")>();
+
+  return {
+    ...actual,
+    extractText: vi.fn(actual.extractText),
+  };
+});
+
 afterEach(() => {
+  vi.clearAllMocks();
   vi.restoreAllMocks();
 });
 
@@ -19,9 +30,23 @@ describe("extractText", () => {
     const bytes = new Uint8Array(await readFile(fixtureUrl));
 
     expect(bytes.byteLength).toBeLessThan(5 * 1024);
-    await expect(extractText(bytes, "application/pdf")).resolves.toBe(
-      "CourseStudyAgent PDF fixture text.",
-    );
+    await expect(extractText(bytes, "application/pdf")).resolves.toEqual([
+      { page: 1, text: "CourseStudyAgent PDF fixture text." },
+    ]);
+  });
+
+  it("returns normalized PDF pages with original page numbers and drops empty pages", async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    vi.mocked(extractPdfText).mockResolvedValueOnce({
+      totalPages: 3,
+      text: ["  First page.  ", " \r\n ", "Third page.\n\n\nNext paragraph."],
+    });
+
+    await expect(extractText(bytes, "application/pdf")).resolves.toEqual([
+      { page: 1, text: "First page." },
+      { page: 3, text: "Third page.\n\nNext paragraph." },
+    ]);
+    expect(extractPdfText).toHaveBeenCalledWith(bytes, { mergePages: false });
   });
 
   it("extracts PPTX slides in numeric order and decodes XML entities", async () => {
@@ -41,11 +66,14 @@ describe("extractText", () => {
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
     const expected = [
-      `Slide 1 & <tag> "quoted" 'apostrophe'`,
-      ...Array.from({ length: 9 }, (_, index) => `Slide ${index + 2}`),
-    ].join("\n\n");
+      { page: 1, text: `Slide 1 & <tag> "quoted" 'apostrophe'` },
+      ...Array.from({ length: 9 }, (_, index) => ({
+        page: index + 2,
+        text: `Slide ${index + 2}`,
+      })),
+    ];
 
-    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(expected);
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual(expected);
   });
 
   it("decodes decimal and hexadecimal numeric PPTX entities", async () => {
@@ -57,9 +85,9 @@ describe("extractText", () => {
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
-    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(
-      "PowerPoint’s “smart quotes”",
-    );
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([
+      { page: 1, text: "PowerPoint’s “smart quotes”" },
+    ]);
   });
 
   it("extracts multiple PPTX text runs with attributes in order", async () => {
@@ -71,9 +99,9 @@ describe("extractText", () => {
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
-    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(
-      "Hello world",
-    );
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([
+      { page: 1, text: "Hello world" },
+    ]);
   });
 
   it("separates PPTX paragraphs without separating runs within a paragraph", async () => {
@@ -85,9 +113,9 @@ describe("extractText", () => {
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
-    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(
-      "Processes\nIsolated memory",
-    );
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([
+      { page: 1, text: "Processes\nIsolated memory" },
+    ]);
   });
 
   it("ignores non-slide files in a PPTX archive", async () => {
@@ -106,18 +134,33 @@ describe("extractText", () => {
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
-    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe(
-      "Visible slide",
-    );
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([
+      { page: 1, text: "Visible slide" },
+    ]);
   });
 
-  it("returns empty text for a PPTX with no slide XML files", async () => {
+  it("returns no sections for a PPTX with no slide XML files", async () => {
     const zip = new JSZip();
     zip.file("[Content_Types].xml", "<Types />");
 
     const bytes = await zip.generateAsync({ type: "uint8array" });
 
-    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toBe("");
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([]);
+  });
+
+  it("drops PPTX slides whose normalized text is empty", async () => {
+    const zip = new JSZip();
+    zip.file("ppt/slides/slide1.xml", "<p:sld><a:p></a:p></p:sld>");
+    zip.file(
+      "ppt/slides/slide2.xml",
+      "<p:sld><a:p><a:t>Visible slide</a:t></a:p></p:sld>",
+    );
+
+    const bytes = await zip.generateAsync({ type: "uint8array" });
+
+    await expect(extractText(bytes, PPTX_MIME_TYPE)).resolves.toEqual([
+      { page: 2, text: "Visible slide" },
+    ]);
   });
 
   it("rejects a PPTX over the 50 MB uncompressed limit before reading files", async () => {
@@ -158,9 +201,9 @@ describe("extractText", () => {
       },
     } as unknown as JSZip);
 
-    await expect(extractText(new Uint8Array(), PPTX_MIME_TYPE)).resolves.toBe(
-      "At the limit",
-    );
+    await expect(
+      extractText(new Uint8Array(), PPTX_MIME_TYPE),
+    ).resolves.toEqual([{ page: 1, text: "At the limit" }]);
     expect(readSlide).toHaveBeenCalledOnce();
   });
 
@@ -191,9 +234,9 @@ describe("extractText", () => {
       },
     } as unknown as JSZip);
 
-    await expect(extractText(new Uint8Array(), PPTX_MIME_TYPE)).resolves.toBe(
-      "Visible slide",
-    );
+    await expect(
+      extractText(new Uint8Array(), PPTX_MIME_TYPE),
+    ).resolves.toEqual([{ page: 1, text: "Visible slide" }]);
     expect(readVideo).not.toHaveBeenCalled();
     expect(readSlide).toHaveBeenCalledOnce();
   });
@@ -203,37 +246,39 @@ describe("extractText", () => {
       "  Héllo, 世界!\r\n\r\n\r\n\r\nSecond paragraph.  ",
     );
 
-    await expect(extractText(bytes, "text/plain")).resolves.toBe(
-      "Héllo, 世界!\n\nSecond paragraph.",
-    );
+    await expect(extractText(bytes, "text/plain")).resolves.toEqual([
+      { page: null, text: "Héllo, 世界!\n\nSecond paragraph." },
+    ]);
   });
 
-  it("returns empty text for an empty text file", async () => {
-    await expect(extractText(new Uint8Array(), "text/plain")).resolves.toBe("");
+  it("returns no sections for an empty text file", async () => {
+    await expect(extractText(new Uint8Array(), "text/plain")).resolves.toEqual(
+      [],
+    );
   });
 
   it("preserves exactly two newlines", async () => {
     const bytes = new TextEncoder().encode("First\n\nSecond");
 
-    await expect(extractText(bytes, "text/plain")).resolves.toBe(
-      "First\n\nSecond",
-    );
+    await expect(extractText(bytes, "text/plain")).resolves.toEqual([
+      { page: null, text: "First\n\nSecond" },
+    ]);
   });
 
   it("collapses three newlines into two", async () => {
     const bytes = new TextEncoder().encode("First\n\n\nSecond");
 
-    await expect(extractText(bytes, "text/plain")).resolves.toBe(
-      "First\n\nSecond",
-    );
+    await expect(extractText(bytes, "text/plain")).resolves.toEqual([
+      { page: null, text: "First\n\nSecond" },
+    ]);
   });
 
   it.each(["image/png", "image/jpeg"] as const)(
-    "returns empty text for %s images",
+    "returns no sections for %s images",
     async (mimeType) => {
       await expect(
         extractText(new Uint8Array([1, 2, 3]), mimeType),
-      ).resolves.toBe("");
+      ).resolves.toEqual([]);
     },
   );
 
