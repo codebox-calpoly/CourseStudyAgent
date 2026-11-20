@@ -1,3 +1,4 @@
+import { EMBEDDING_DIMENSIONS } from "../../lib/aiConfig";
 import {
   boolean,
   date,
@@ -107,7 +108,9 @@ export const chunks = pgTable(
       .notNull()
       .references(() => classes.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
-    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+    embedding: vector("embedding", {
+      dimensions: EMBEDDING_DIMENSIONS,
+    }).notNull(),
   },
   (table) => [
     foreignKey({

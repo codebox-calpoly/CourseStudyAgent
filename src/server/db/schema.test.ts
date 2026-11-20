@@ -1,6 +1,3 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-
 import { getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
@@ -137,3 +134,5 @@ describe("database schema", () => {
     expect(vectorTableIndex).toBeGreaterThan(extensionIndex);
   });
 });
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
