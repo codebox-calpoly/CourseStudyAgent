@@ -6,12 +6,17 @@ import { describe, expect, it } from "vitest";
 import {
   chunks,
   classes,
+  conversations,
   examReports,
   fileKind,
   files,
+  fileStatus,
   joinCodes,
   membershipRole,
   memberships,
+  messageCitations,
+  messageRole,
+  messages,
   prerequisites,
   signals,
   signalStance,
@@ -37,6 +42,9 @@ describe("database schema", () => {
     const tables = [
       users,
       classes,
+      conversations,
+      messages,
+      messageCitations,
       memberships,
       joinCodes,
       files,
@@ -66,6 +74,8 @@ describe("database schema", () => {
   it("enforces all constrained values with PostgreSQL enums", () => {
     expect(membershipRole.enumValues).toEqual(["student", "professor"]);
     expect(voteValue.enumValues).toEqual(["confirm", "dispute"]);
+    expect(messageRole.enumValues).toEqual(["user", "assistant"]);
+    expect(fileStatus.enumValues).toEqual(["pending", "ready", "failed"]);
     expect(fileKind.enumValues).toEqual([
       "lecture_notes",
       "notes",
@@ -92,7 +102,73 @@ describe("database schema", () => {
       "prerequisite_class_id",
     ]);
     expect(constraintColumns(files)).toContainEqual(["id", "class_id"]);
+    expect(constraintColumns(messages)).toContainEqual([
+      "conversation_id",
+      "idempotency_key",
+    ]);
     expect(chunks.embedding.getSQLType()).toBe("vector(1536)");
+  });
+
+  it("uses the chat enums and defaults new files to pending", () => {
+    expect(messages.role.getSQLType()).toBe(messageRole.enumName);
+    expect(files.status.getSQLType()).toBe(fileStatus.enumName);
+    expect(files.status).toMatchObject({ default: "pending", notNull: true });
+    expect(messages.idempotencyKey.notNull).toBe(false);
+  });
+
+  it("requires the chat fields and stores citation numbers as integers", () => {
+    for (const column of [
+      conversations.classId,
+      conversations.userId,
+      messages.conversationId,
+      messages.role,
+      messages.content,
+      messageCitations.messageId,
+      messageCitations.chunkId,
+      messageCitations.citationNumber,
+    ]) {
+      expect(column.notNull).toBe(true);
+    }
+    expect(messageCitations.citationNumber.getSQLType()).toBe("integer");
+  });
+
+  it("cascades deletions through conversations, messages, and citations", () => {
+    expect(foreignKeyDetails(conversations)).toEqual([
+      {
+        columns: ["class_id"],
+        target: "classes",
+        targetColumns: ["id"],
+        onDelete: "cascade",
+      },
+      {
+        columns: ["user_id"],
+        target: "users",
+        targetColumns: ["id"],
+        onDelete: "cascade",
+      },
+    ]);
+    expect(foreignKeyDetails(messages)).toEqual([
+      {
+        columns: ["conversation_id"],
+        target: "conversations",
+        targetColumns: ["id"],
+        onDelete: "cascade",
+      },
+    ]);
+    expect(foreignKeyDetails(messageCitations)).toEqual([
+      {
+        columns: ["message_id"],
+        target: "messages",
+        targetColumns: ["id"],
+        onDelete: "cascade",
+      },
+      {
+        columns: ["chunk_id"],
+        target: "chunks",
+        targetColumns: ["id"],
+        onDelete: "cascade",
+      },
+    ]);
   });
 
   it("prevents chunks from referencing a file in another class", () => {
