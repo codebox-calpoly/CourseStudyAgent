@@ -22,6 +22,13 @@
       "when": 1795119315182,
       "tag": "20261119201515_fine_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795284481387,
+      "tag": "20261121180801_chat_and_file_status",
+      "breakpoints": true
     }
   ]
 }

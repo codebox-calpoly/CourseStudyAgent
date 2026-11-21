@@ -3,6 +3,7 @@ import {
   boolean,
   date,
   foreignKey,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -23,6 +24,8 @@ export const membershipRole = pgEnum("membership_role", [
   "professor",
 ]);
 export const voteValue = pgEnum("vote_value", ["confirm", "dispute"]);
+export const messageRole = pgEnum("message_role", ["user", "assistant"]);
+export const fileStatus = pgEnum("file_status", ["pending", "ready", "failed"]);
 export const fileKind = pgEnum("file_kind", [
   "lecture_notes",
   "notes",
@@ -51,6 +54,32 @@ export const classes = pgTable("classes", {
   section: text("section").notNull(),
   professor: text("professor").notNull(),
 });
+
+export const conversations = pgTable("conversations", {
+  id: id(),
+  createdAt: createdAt(),
+  classId: uuid("class_id")
+    .notNull()
+    .references(() => classes.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+});
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: id(),
+    createdAt: createdAt(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    role: messageRole("role").notNull(),
+    content: text("content").notNull(),
+    idempotencyKey: text("idempotency_key"),
+  },
+  (table) => [unique().on(table.conversationId, table.idempotencyKey)],
+);
 
 export const memberships = pgTable(
   "memberships",
@@ -92,6 +121,7 @@ export const files = pgTable(
     name: text("name").notNull(),
     storagePath: text("storage_path").notNull(),
     kind: fileKind("kind").default("other").notNull(),
+    status: fileStatus("status").default("pending").notNull(),
     taughtOn: date("taught_on"),
     professorReleased: boolean("professor_released").default(false).notNull(),
   },
@@ -119,6 +149,18 @@ export const chunks = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+export const messageCitations = pgTable("message_citations", {
+  id: id(),
+  createdAt: createdAt(),
+  messageId: uuid("message_id")
+    .notNull()
+    .references(() => messages.id, { onDelete: "cascade" }),
+  chunkId: uuid("chunk_id")
+    .notNull()
+    .references(() => chunks.id, { onDelete: "cascade" }),
+  citationNumber: integer("citation_number").notNull(),
+});
 
 export const signals = pgTable("signals", {
   id: id(),
@@ -182,6 +224,7 @@ export const prerequisites = pgTable(
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
+  conversations: many(conversations),
   memberships: many(memberships),
   uploadedFiles: many(files),
   signals: many(signals),
@@ -190,6 +233,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 }));
 
 export const classesRelations = relations(classes, ({ many }) => ({
+  conversations: many(conversations),
   memberships: many(memberships),
   joinCodes: many(joinCodes),
   files: many(files),
@@ -199,6 +243,43 @@ export const classesRelations = relations(classes, ({ many }) => ({
   prerequisites: many(prerequisites, { relationName: "classPrerequisites" }),
   requiredBy: many(prerequisites, { relationName: "requiredByClasses" }),
 }));
+
+export const conversationsRelations = relations(
+  conversations,
+  ({ one, many }) => ({
+    class: one(classes, {
+      fields: [conversations.classId],
+      references: [classes.id],
+    }),
+    user: one(users, {
+      fields: [conversations.userId],
+      references: [users.id],
+    }),
+    messages: many(messages),
+  }),
+);
+
+export const messagesRelations = relations(messages, ({ one, many }) => ({
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  citations: many(messageCitations),
+}));
+
+export const messageCitationsRelations = relations(
+  messageCitations,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [messageCitations.messageId],
+      references: [messages.id],
+    }),
+    chunk: one(chunks, {
+      fields: [messageCitations.chunkId],
+      references: [chunks.id],
+    }),
+  }),
+);
 
 export const membershipsRelations = relations(memberships, ({ one }) => ({
   user: one(users, { fields: [memberships.userId], references: [users.id] }),
@@ -221,7 +302,8 @@ export const filesRelations = relations(files, ({ one, many }) => ({
   chunks: many(chunks),
 }));
 
-export const chunksRelations = relations(chunks, ({ one }) => ({
+export const chunksRelations = relations(chunks, ({ one, many }) => ({
+  citations: many(messageCitations),
   file: one(files, { fields: [chunks.fileId], references: [files.id] }),
   class: one(classes, { fields: [chunks.classId], references: [classes.id] }),
 }));
