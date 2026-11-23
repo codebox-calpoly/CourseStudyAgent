@@ -57,7 +57,6 @@ export function createMessageStore(
       }>(sql`
       select m.conversation_id, m.content from messages m join conversations c on c.id = m.conversation_id
       where c.user_id = ${input.userId} and c.class_id = ${input.classId} and m.idempotency_key = ${userKey}
-      
       limit 1`);
       let conversationId = input.conversationId;
       if (existing[0]) {
